@@ -18,16 +18,21 @@ import socket
 
 class secondary_task_module:
 
-	def __init__(self, secondaryTime = 5, file= None):
+	def __init__(self,totalTime =1, secondaryTime = 5, file= None):
 
 		#Important variables
-		self.windowName = "Image Window"
 		self.initTime = time.time()
 		self.secondaryTime = secondaryTime
-		self.turnSecondaryTask = False
+		self.turnSecondaryTask = True
 		self.lastActivation = -1
 		self.startProcedure = False
+		self.stopProcedure = False
+		self.totalTime = totalTime*60 #In seconds
 		self.client = None
+		self.maxPossibleScore = (secondaryTime % 10)*2 * totalTime/2
+		self.score = 0
+		self.correct = 0
+		self.incorrect = 0 
 		
 		#Published topics
 		self.image_pub1 = rospy.Publisher("modified_display_left",Image, queue_size=5)
@@ -51,7 +56,6 @@ class secondary_task_module:
 		self.message =  ""
 		self.timerStr = ""
 		self.scoreStr = ""
-		self.score = 0
 		self.alpha = 0.45
 		self.numberOfTargets = 2
 		self.target = random.sample(range(min(secondaryTime,10)), self.numberOfTargets)
@@ -71,30 +75,52 @@ class secondary_task_module:
 
 	def update(self):
 		
-		if self.startProcedure:
+		if self.startProcedure and not self.stopProcedure:
 			currentTime = time.time()
 			secondsCounter = int((currentTime - self.initTime))
 			seconds = secondsCounter % 60
 			minutes = int(secondsCounter / 60)
 			self.timerStr = "Timer: {:02d}:{:02d}".format(minutes,seconds)
 
-			if secondsCounter % self.secondaryTime == 0:
+			#Check if procedure is already over.
+			if time.time() - self.initTime > self.totalTime:
+				secondaryTaskStatus = "finished"
+
+				#Writing to file
+				self.file.write("{:.9f} {}\n".format(time.time(), secondaryTaskStatus))
+				self.file.write("##DATA##\n")
+				self.file.write("{} {}\n".format("Score", self.score))
+				self.file.write("{} {:.3f}\n".format("Max possible Score", float(self.maxPossibleScore) ))
+				#self.file.write("{} {:.3f}\n".format("Accuracy", float(self.score/self.maxPossibleScore) ))
+				self.file.write("{} {}\n".format("Incorrect", self.incorrect))
+				self.file.write("{} {}\n".format("Correct", self.correct))
+				self.file.flush()
+
+				self.stopProcedure = True
+				self.message = "Procedure finished"
+			#If the procedure have not finished, check if the status of the secondary task have to change
+			elif secondsCounter % self.secondaryTime == 0:
 				if secondsCounter != self.lastActivation:
 					self.turnSecondaryTask = not self.turnSecondaryTask
 					self.target = random.sample(range(1,min(self.secondaryTime,10)), self.numberOfTargets)
 					
 					self.lastActivation = secondsCounter
 					secondaryTaskStatus = "active" if self.turnSecondaryTask else "not_active"
+
+					#Writing to file
 					self.file.write("{:.9f} {}\n".format(time.time(), secondaryTaskStatus))
+					self.file.flush()
 
 					if self.turnSecondaryTask:
 						temp = " ".join(map(str,self.target))
 						self.message  = "Do secondary, Targets: {:s}".format(temp)
 						self.scoreStr = "Score: {:3d}".format(self.score)
+						self.alpha = 0.45
 						
 					else:
 						self.message  = "Do only primary task"
 						self.scoreStr = "Score: {:3d}".format(self.score)
+						self.alpha = 0.30
 					
 
 	def modifyImageAndPublish(self,cv_image, misalignment=0, publisherId=1):
@@ -160,16 +186,26 @@ class secondary_task_module:
 				self.scoreStr = "Score: {:3d}".format(self.score)
 				data.header.frame_id = "right"
 				self.score_pub.publish(data)
+				self.correct += 1
 				
 			else:
 				self.score -= 2
 				self.scoreStr = "Score: {:3d}".format(self.score)
 				data.header.frame_id = "wrong"
 				self.score_pub.publish(data)
+				self.incorrect += 1
 
 		elif not self.startProcedure and data.buttons[0]:
-			self.message  = "Starting procedure in 4..."
-			time.sleep(1)
+			self.message  = "Configuring procedure ..."
+
+			#Communicate to NTP server and write header to timestamp file.
+			ntp,localTime  = ntpClient.request('europe.pool.ntp.org', version=3),time.time()
+			self.file.write("Initial computer time: {:.9f}\n".format(localTime))
+			self.file.write("Initial NTP time:      {:.9f}\n".format(ntp.tx_time))
+			self.file.write("NTP offset:            {:.9f}\n".format(ntp.offset))
+			self.file.write("##DATA##\n")
+			self.file.write("timeStamp secondary_task_status\n")
+
 			self.message  = "Starting procedure in 3..."
 			time.sleep(1)
 			self.message  = "Starting procedure in 2..."
@@ -177,6 +213,12 @@ class secondary_task_module:
 			self.message  = "Starting procedure in 1..."
 			time.sleep(1)
 			self.initTime = time.time()
+			
+			#Writing to file
+			secondaryTaskStatus = "started"
+			self.file.write("{:.9f} {}\n".format(self.initTime, secondaryTaskStatus))
+			self.file.flush()
+
 			self.startProcedure = True
 							
 
@@ -241,7 +283,7 @@ def main(userId, trialId):
 	# file.write("##DATA##\n")
 	# file.write("timeStamp secondary_task_status\n")
 	
-	ic = secondary_task_module(file=file, secondaryTime = 60)
+	ic = secondary_task_module(file=file, secondaryTime = 60, totalTime = 6)
 	#Sleep until the subscribers are ready.
 	time.sleep(0.050)
 	# ic.init_socket_connection('127.0.0.1', '8080')
@@ -249,7 +291,7 @@ def main(userId, trialId):
 	try:
 		while not rospy.core.is_shutdown():
 			ic.update()
-			rospy.rostime.wallsleep(0.4)
+			rospy.rostime.wallsleep(0.25)
 			
 
 	except KeyboardInterrupt:
