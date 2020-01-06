@@ -52,9 +52,9 @@ class secondary_task_module:
 		
 		#Subscribed topics
 		#Topic to Record Video
-		self.camera_stream_subs = rospy.Subscriber("/modified_display_right/", Image, self.video_recording_callback,  queue_size = 1)
-		self.image_sub_left  = rospy.Subscriber("/pu_dvrk_cam/left/inverted", Image, self.left_callback)
-		self.image_sub_right = rospy.Subscriber("/pu_dvrk_cam/right/inverted", Image, self.right_callback)
+		self.camera_stream_subs = rospy.Subscriber("/modified_display_left/", Image, self.video_recording_callback,  queue_size = 1)
+		self.image_sub_left  = rospy.Subscriber("/pu_dvrk_cam/right/image_raw", Image, self.left_callback)
+		self.image_sub_right = rospy.Subscriber("/pu_dvrk_cam/left/image_raw", Image, self.right_callback)
 		self.camera_pedal_sub = rospy.Subscriber("/dvrk/footpedals/bicoag", Joy, self.pedal_callback)
 		self.score_sub = rospy.Subscriber("score_correctly",Joy, self.score_callback)
 		# self.socket_client_sub = rospy.Subscriber("socket_client", rosString, self.socket_callback)
@@ -64,10 +64,11 @@ class secondary_task_module:
 		self.message =  ""
 		self.timerStr = ""
 		self.scoreStr = ""
-		self.alpha = 0.95
+		self.alpha = 0.45
 		self.numberOfTargets = 2
 		self.target = random.sample(range(min(secondaryTime,10)), self.numberOfTargets)
 
+		
 
 		#Blink a green/red rectangle on screen to indicate the user the secondary task is starting
 		self.notifyUser= False
@@ -108,7 +109,6 @@ class secondary_task_module:
 				#Stop recording
 				self.is_recording_time = False
 				self.out.release()
-
 				self.message = "Procedure finished"
 			#If the procedure have not finished, check if the status of the secondary task have to change
 			elif secondsCounter % self.secondaryTime == 0:
@@ -127,7 +127,7 @@ class secondary_task_module:
 						temp = " ".join(map(str,self.target))
 						self.message  = "Do secondary, Targets: {:s}".format(temp)
 						self.scoreStr = "Score: {:3d}".format(self.score)
-						self.alpha = 0.95
+						self.alpha = 0.45
 						
 					else:
 						self.message  = "Do only primary task"
@@ -146,9 +146,9 @@ class secondary_task_module:
 		# 	self.timerStr = ""
 
 		#Modify Image
-		if True: #if not self.startProcedure or self.stopProcedure:
+		if not self.startProcedure or self.stopProcedure:
 			overlay = cv_image.copy()
-			
+		
 			cv2.putText(overlay, self.message,(10+misalignment, 30), cv2.FONT_HERSHEY_SIMPLEX, self.fontSize, (0, 0, 255), 3)
 			cv2.putText(overlay, self.timerStr+"  "+self.scoreStr,(10+misalignment, 75), cv2.FONT_HERSHEY_SIMPLEX, self.fontSize, (0, 0, 255), 3)
 			
@@ -231,7 +231,6 @@ class secondary_task_module:
 			self.initTime = time.time()
 			
 			#Writing to file
-			print("Start procedure!")
 			secondaryTaskStatus = "started"
 			self.file.write("{:.9f} {}\n".format(self.initTime, secondaryTaskStatus))
 			self.file.flush()
@@ -252,9 +251,8 @@ class secondary_task_module:
 		tempFrame = None
 		cv_image = self.bridge.imgmsg_to_cv2(videoFrame,"bgr8")
 		if self.is_recording_time:	
-			#print(self.is_recording_time)
+			print(self.is_recording_time)
 			self.out.write(cv_image)
-			
 			# tempFrame = np.fromstring(videoFrame.data, np.uint8)
 	  #       image_np = cv2.imdecode(tempFrame, cv2.IMREAD_COLOR)
 	  #       # image_np=np.zeros((600,600,3))
@@ -303,9 +301,11 @@ def main(userId, trialId):
 	#Create File to save Timestamps
 	timeStamp = createTimeStamp()
 	fileName = "dvrk_collection_{:s}_{:s}.txt".format(str(userId), str(trialId))
-	videoFileName = "dvrk_collection_{:s}_{:s}.avi".format(str(userId), str(trialId))
 	file = open("/home/juan/DVRK_secondary_task_data/" + timeStamp + '_' + fileName,'w')
+
+	videoFileName = "dvrk_collection_{:s}_{:s}.avi".format(str(userId), str(trialId))
 	completeVideoFileName  = "/home/juan/DVRK_secondary_task_data/" + timeStamp + '_' + videoFileName
+
 
 	#Communicate to NTP server and write header to timestamp file.
 	# ntp,localTime  = ntpClient.request('europe.pool.ntp.org', version=3),time.time()
@@ -315,7 +315,7 @@ def main(userId, trialId):
 	# file.write("##DATA##\n")
 	# file.write("timeStamp secondary_task_status\n")
 	
-	ic = secondary_task_module(file=file, secondaryTime = 30, totalTime = 2, videoFileName =completeVideoFileName)
+	ic = secondary_task_module(file=file, secondaryTime = 60, totalTime = 5, videoFileName =completeVideoFileName)
 	#Sleep until the subscribers are ready.
 	time.sleep(0.050)
 	# ic.init_socket_connection('127.0.0.1', '8080')
