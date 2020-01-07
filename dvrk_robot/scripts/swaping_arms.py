@@ -42,10 +42,8 @@ class Arm_swaper:
     def unselect_mtm_psm_pairs(self):
         self.mtml_key_value_message.value = ""
         self.mtmr_key_value_message.value = ""
-        self.publisher.publish(self.mtmr_key_value_message)
-        time.sleep(0.25)
-        self.publisher.publish(self.mtml_key_value_message)
-        time.sleep(0.25)
+        
+        self.publish_current_state()
 
     def swap_arms(self):
         if self.state == 1:
@@ -57,7 +55,10 @@ class Arm_swaper:
             self.mtmr_key_value_message.value = "PSM1"
             self.state =1
 
-        self.publisher.publish(self.mtmr_key_value_message)
+        self.publish_current_state()
+
+    def publish_current_state(self):
+    	self.publisher.publish(self.mtmr_key_value_message)
         time.sleep(0.25)
         self.publisher.publish(self.mtml_key_value_message)
         time.sleep(0.25)
