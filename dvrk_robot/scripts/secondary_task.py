@@ -64,7 +64,7 @@ class secondary_task_module:
 		self.message =  ""
 		self.timerStr = ""
 		self.scoreStr = ""
-		self.alpha = 0.95
+		self.alpha = 0.8
 		self.numberOfTargets = 2
 		self.target = random.sample(range(min(secondaryTime,10)), self.numberOfTargets)
 
@@ -104,6 +104,7 @@ class secondary_task_module:
 				self.file.flush()
 
 				self.stopProcedure = True
+				self.alpha = 0.9
 
 				#Stop recording
 				self.is_recording_time = False
@@ -127,12 +128,12 @@ class secondary_task_module:
 						temp = " ".join(map(str,self.target))
 						self.message  = "Do secondary, Targets: {:s}".format(temp)
 						self.scoreStr = "Score: {:3d}".format(self.score)
-						self.alpha = 0.95
+						self.alpha = 0.20
 						
 					else:
 						self.message  = "Do only primary task"
 						self.scoreStr = "Score: {:3d}".format(self.score)
-						self.alpha = 0.30
+						self.alpha = 0.20
 					
 
 	def modifyImageAndPublish(self,cv_image, misalignment=0, publisherId=1):
@@ -315,7 +316,7 @@ def main(userId, trialId):
 	# file.write("##DATA##\n")
 	# file.write("timeStamp secondary_task_status\n")
 	
-	ic = secondary_task_module(file=file, secondaryTime = 30, totalTime = 2, videoFileName =completeVideoFileName)
+	ic = secondary_task_module(file=file, secondaryTime = 30, totalTime = 4, videoFileName = completeVideoFileName)
 	#Sleep until the subscribers are ready.
 	time.sleep(0.050)
 	# ic.init_socket_connection('127.0.0.1', '8080')
