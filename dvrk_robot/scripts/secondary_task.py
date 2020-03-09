@@ -147,7 +147,7 @@ class secondary_task_module:
 		# 	self.timerStr = ""
 
 		#Modify Image
-		if True: #if not self.startProcedure or self.stopProcedure:
+		if not self.startProcedure or self.stopProcedure:
 			overlay = cv_image.copy()
 			
 			cv2.putText(overlay, self.message,(10+misalignment, 30), cv2.FONT_HERSHEY_SIMPLEX, self.fontSize, (0, 0, 255), 3)
@@ -316,7 +316,7 @@ def main(userId, trialId):
 	# file.write("##DATA##\n")
 	# file.write("timeStamp secondary_task_status\n")
 	
-	ic = secondary_task_module(file=file, secondaryTime = 30, totalTime = 4, videoFileName = completeVideoFileName)
+	ic = secondary_task_module(file=file, secondaryTime = 30, totalTime = 1, videoFileName = completeVideoFileName)
 	#Sleep until the subscribers are ready.
 	time.sleep(0.050)
 	# ic.init_socket_connection('127.0.0.1', '8080')
