@@ -39,6 +39,11 @@ class secondary_task_module:
 		self.fourcc = cv2.VideoWriter_fourcc(*'XVID')
 		self.out = cv2.VideoWriter(videoFileName, self.fourcc, 30.0, (720,480))
 		self.frame = None
+
+		#Create file to write timestamp of each frame
+		self.frames_time_file = open(videoFileName+".txt",'w')
+		self.frame_counter = 0
+		self.frames_time_file.write("frame,timestamp\n")
 		
 		#Published topics
 		self.image_pub1 = rospy.Publisher("modified_display_left",Image, queue_size=5)
@@ -253,8 +258,11 @@ class secondary_task_module:
 		tempFrame = None
 		cv_image = self.bridge.imgmsg_to_cv2(videoFrame,"bgr8")
 		if self.is_recording_time:	
-			#print(self.is_recording_time)
+			
 			self.out.write(cv_image)
+
+			self.frame_counter += 1
+			self.frames_time_file.write("{:d},{:}\n".format(self.frame_counter,str(rospy.Time.now())))
 			
 			# tempFrame = np.fromstring(videoFrame.data, np.uint8)
 	  #       image_np = cv2.imdecode(tempFrame, cv2.IMREAD_COLOR)
@@ -355,7 +363,8 @@ if __name__ == '__main__':
 		trial = rospy.get_param('/secondary_task_launcher/trial')
 	else:
 		print("Subject Id or trial was not specified")
-		raise KeyError
+		subject_id = "test"
+		trial = 0
 
 	print("Initializing node")
 	main(subject_id, trial)
