@@ -324,7 +324,7 @@ def main(userId, trialId):
 	# file.write("##DATA##\n")
 	# file.write("timeStamp secondary_task_status\n")
 	
-	ic = secondary_task_module(file=file, secondaryTime = 30, totalTime = 1, videoFileName = completeVideoFileName)
+	ic = secondary_task_module(file=file, secondaryTime = 30, totalTime = 6, videoFileName = completeVideoFileName)
 	#Sleep until the subscribers are ready.
 	time.sleep(0.050)
 	# ic.init_socket_connection('127.0.0.1', '8080')
